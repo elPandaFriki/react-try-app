@@ -1,14 +1,23 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import * as serviceWorker from './serviceWorker';
+import React from "react";
+import ReactDOM from "react-dom";
+import "./index.css";
+import { App } from "./components";
+import * as serviceWorker from "./serviceWorker";
+import Providers from "./providers";
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <Providers.Redux>
+      <Providers.SocketIO useRedux={true}>
+        <Providers.Intl useRedux={true}>
+          <Providers.Theme>
+            <App />
+          </Providers.Theme>
+        </Providers.Intl>
+      </Providers.SocketIO>
+    </Providers.Redux>
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById("root")
 );
 
 // If you want your app to work offline and load faster, you can change
