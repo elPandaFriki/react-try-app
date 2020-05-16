@@ -99,7 +99,15 @@ class Asteroids extends React.Component {
     this.ship.canShoot = false;
   };
 
+  fitCanvas = () => {
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    this.canvas.width = this.canvas.offsetWidth;
+    this.canvas.height = this.canvas.offsetHeight;
+  }
+
   componentDidMount() {
+    this.fitCanvas();
     this.newGame();
     this.setListeners(true);
     this.interval = setInterval(this.update, 1000 / this.FPS);
@@ -171,11 +179,11 @@ class Asteroids extends React.Component {
         ctx.beginPath();
         ctx.moveTo(
           this.ship.x -
-            this.ship.r *
-              ((2 / 3) * Math.cos(this.ship.a) + 0.5 * Math.sin(this.ship.a)),
+          this.ship.r *
+          ((2 / 3) * Math.cos(this.ship.a) + 0.5 * Math.sin(this.ship.a)),
           this.ship.y +
-            this.ship.r *
-              ((2 / 3) * Math.sin(this.ship.a) - 0.5 * Math.cos(this.ship.a))
+          this.ship.r *
+          ((2 / 3) * Math.sin(this.ship.a) - 0.5 * Math.cos(this.ship.a))
         );
         ctx.lineTo(
           this.ship.x - ((this.ship.r * 5) / 3) * Math.cos(this.ship.a),
@@ -183,11 +191,11 @@ class Asteroids extends React.Component {
         );
         ctx.lineTo(
           this.ship.x -
-            this.ship.r *
-              ((2 / 3) * Math.cos(this.ship.a) - 0.5 * Math.sin(this.ship.a)),
+          this.ship.r *
+          ((2 / 3) * Math.cos(this.ship.a) - 0.5 * Math.sin(this.ship.a)),
           this.ship.y +
-            this.ship.r *
-              ((2 / 3) * Math.sin(this.ship.a) + 0.5 * Math.cos(this.ship.a))
+          this.ship.r *
+          ((2 / 3) * Math.sin(this.ship.a) + 0.5 * Math.cos(this.ship.a))
         );
         ctx.closePath();
         ctx.fill();
@@ -440,7 +448,7 @@ class Asteroids extends React.Component {
         this.ship.lasers[i].y += this.ship.lasers[i].yv;
         this.ship.lasers[i].dist += Math.sqrt(
           Math.pow(this.ship.lasers[i].xv, 2) +
-            Math.pow(this.ship.lasers[i].yv, 2)
+          Math.pow(this.ship.lasers[i].yv, 2)
         );
       }
       if (this.ship.lasers[i].x < 0) {
@@ -557,6 +565,7 @@ class Asteroids extends React.Component {
       "keyup",
       this.keyUp
     );
+    window.onresize = enable ? this.fitCanvas : null
   };
 
   newShip = () => {
@@ -679,16 +688,19 @@ class Asteroids extends React.Component {
   };
 
   render() {
-    const width = _.get(this.props, "gameStyle.width", "760");
-    const height = _.get(this.props, "gameStyle.height", "570");
     return (
-      <canvas
-        ref={(r) => {
-          this.canvas = r;
-        }}
-        width={width}
-        height={height}
-      />
+      <div
+        style={{
+          position: "relative",
+          width: _.get(this.props, "gameStyle.width", "100%"),
+          height: _.get(this.props, "gameStyle.height", "100%")
+        }}>
+        <canvas
+          ref={(r) => {
+            this.canvas = r;
+          }}
+        />
+      </div>
     );
   }
 }

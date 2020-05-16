@@ -1,34 +1,33 @@
 import React from "react";
+import { makeStyles } from "@material-ui/core/styles";
+import Asteroids from '../Asteroids';
+/*
 import ENUMS from "../../constants/enums";
 import MenuItem from "@material-ui/core/MenuItem";
-import { makeStyles } from "@material-ui/core/styles";
 import TextField from "@material-ui/core/TextField";
 import InputAdornment from "@material-ui/core/InputAdornment";
-import Asteroids from '../Asteroids';
+*/
 
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-    minWidth: 120,
-  },
-  selectEmpty: {
-    marginTop: theme.spacing(2),
-  },
-  App: {
-    textAlign: "center",
-    [theme.breakpoints.up("md")]: {},
-    [theme.breakpoints.down("md")]: {},
-  },
-  flag: {
-    maxWidth: "15px",
-  },
-}));
+const useStyles = makeStyles((theme) => {
+  return {
+    App: {
+      width: "100%",
+      height: "100vh"
+    },
+    Asteroids: {
+      width: "100%",
+      height: "100%"
+    }
+  }
+});
 
 const AppPure = (props) => {
   const classes = useStyles();
-  const selector_id = "demo-simple-select-outlined-label";
+  // const selector_id = "demo-simple-select-outlined-label";
   return (
     <div className={classes.App}>
+      {/**
+       * 
       <p>{props.intlCallback("application")}</p>
       <TextField
         id={selector_id}
@@ -73,7 +72,10 @@ const AppPure = (props) => {
         <option value={true}>Dark</option>
         <option value={false}>Light</option>
       </select>
-      <Asteroids/>
+    */}
+      <div className={classes.Asteroids}>
+        <Asteroids />
+      </div>
     </div>
   );
 };
