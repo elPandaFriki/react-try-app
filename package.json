@@ -2,19 +2,23 @@
   "name": "project_0",
   "version": "0.1.0",
   "private": true,
+  "main": "src/electron-starter.js",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
     "analyze": "source-map-explorer 'build/static/js/*.js'",
-    "clean": "rm -rf package-lock && rm -rf yarn.lock && rm -rf node_modules",
+    "clean": "rm -rf package-lock.json && rm -rf yarn.lock && rm -rf node_modules",
     "update": "yarn run clean && yarn install",
     "deploy": "yarn run update && yarn run build",
     "prebuild": "./scripts/prebuild.sh",
     "postbuild": "./scripts/postbuild.sh",
-    "flow": "flow"
+    "flow": "flow",
+    "electron": "electron .",
+    "dev" : "nf start"
   },
+  "homepage": "./",
   "eslintConfig": {
     "extends": "react-app"
   },
@@ -57,5 +61,9 @@
     "socket.io-client": "2.3.0",
     "socket.io-react": "1.2.0",
     "source-map-explorer": "2.2.1"
+  },
+  "devDependencies": {
+    "electron": "^8.3.0",
+    "foreman": "^3.0.1"
   }
 }
