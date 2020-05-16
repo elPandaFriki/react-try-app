@@ -1,5 +1,6 @@
 {
   "name": "project_0",
+  "productName": "ASTEROIDS_APP",
   "version": "0.1.0",
   "private": true,
   "main": "src/electron-starter.js",
@@ -16,7 +17,8 @@
     "postbuild": "./scripts/postbuild.sh",
     "flow": "flow",
     "electron": "electron .",
-    "dev" : "nf start"
+    "dev": "nf start",
+    "electron-build": "electron-packager . --overwrite --all"
   },
   "homepage": "./",
   "eslintConfig": {
@@ -64,6 +66,7 @@
   },
   "devDependencies": {
     "electron": "^8.3.0",
+    "electron-packager": "^14.2.1",
     "foreman": "^3.0.1"
   }
 }
