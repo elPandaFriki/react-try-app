@@ -21,6 +21,10 @@ const useStyles = makeStyles((theme) => {
   }
 });
 
+const onEvent = (e) => {
+  console.log(e);
+}
+
 const AppPure = (props) => {
   const classes = useStyles();
   // const selector_id = "demo-simple-select-outlined-label";
@@ -74,7 +78,7 @@ const AppPure = (props) => {
       </select>
     */}
       <div className={classes.Asteroids}>
-        <Asteroids />
+        <Asteroids onEvent={onEvent}/>
       </div>
     </div>
   );

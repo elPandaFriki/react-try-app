@@ -4,7 +4,8 @@ import _ from "lodash";
 class Asteroids extends React.Component {
   constructor(props) {
     super(props);
-    this.paused = false;
+    this.menu = ['-- menu --'].concat(_.get(props, 'menu', ['reset', 'restart']));
+    this.menu_option = 1;
     this.shooting = false;
     this.FPS = _.get(props, "gameVariables.fps", 60);
     this.FRICTION = _.get(props, "gameVariables.friction", 0.7);
@@ -83,6 +84,7 @@ class Asteroids extends React.Component {
     this.lives = this.GAME_LIVES;
     this.roidsTotal = 0;
     this.roidsLeft = 0;
+    this.paused = false;
   }
 
   shootLaser = () => {
@@ -134,12 +136,193 @@ class Asteroids extends React.Component {
     ctx.stroke();
   };
 
-  update = () => {
+  drawBounding = () => {
     const ctx = this.canvas.getContext("2d");
-    const blinkOn = this.ship.blinkNum % 2 === 0;
-    const exploding = this.ship.explodeTime > 0;
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.strokeStyle = "lime";
+    ctx.beginPath();
+    ctx.arc(this.ship.x, this.ship.y, this.ship.r, 0, Math.PI * 2, false);
+    ctx.stroke();
+  }
+
+  drawCentreDot = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.fillStyle = "red";
+    ctx.fillRect(this.ship.x - 1, this.ship.y - 1, 2, 2);
+  }
+
+  explodingShip = () => {
+    this.ship.explodeTime--;
+    if (this.ship.explodeTime === 0) {
+      this.lives = this.lives - 1;
+      if (this.lives === 0) {
+        this.gameOver();
+      } else {
+        this.ship = this.newShip();
+      }
+    }
+  }
+
+  checkLaserCollision = () => {
+    let ax, ay, ar, lx, ly;
+    for (let i = this.roids.length - 1; i >= 0; i--) {
+      ax = this.roids[i].x;
+      ay = this.roids[i].y;
+      ar = this.roids[i].r;
+      for (let j = this.ship.lasers.length - 1; j >= 0; j--) {
+        lx = this.ship.lasers[j].x;
+        ly = this.ship.lasers[j].y;
+        if (
+          this.ship.lasers[j].explodeTime === 0 &&
+          this.distBetweenPoints(ax, ay, lx, ly) < ar
+        ) {
+          this.destroyAsteroid(i);
+          this.ship.lasers[j].explodeTime = Math.ceil(
+            this.LASER_EXPLODE_DUR * this.FPS
+          );
+          break;
+        }
+      }
+    }
+  }
+
+  checkShipCollision = () => {
+    if (this.ship.blinkNum === 0 && !this.ship.dead) {
+      for (let i = 0; i < this.roids.length; i++) {
+        if (
+          this.distBetweenPoints(
+            this.ship.x,
+            this.ship.y,
+            this.roids[i].x,
+            this.roids[i].y
+          ) <
+          this.ship.r + this.roids[i].r
+        ) {
+          this.explodeShip();
+          this.destroyAsteroid(i);
+          break;
+        }
+      }
+    }
+    this.ship.a += this.ship.rot;
+    this.ship.x += this.ship.thrust.x;
+    this.ship.y += this.ship.thrust.y;
+  }
+
+  checkAsteroidsPosition = () => {
+    for (let i = 0; i < this.roids.length; i++) {
+      this.roids[i].x += this.roids[i].xv;
+      this.roids[i].y += this.roids[i].yv;
+      if (this.roids[i].x < 0 - this.roids[i].r) {
+        this.roids[i].x = this.canvas.width + this.roids[i].r;
+      } else if (this.roids[i].x > this.canvas.width + this.roids[i].r) {
+        this.roids[i].x = 0 - this.roids[i].r;
+      }
+      if (this.roids[i].y < 0 - this.roids[i].r) {
+        this.roids[i].y = this.canvas.height + this.roids[i].r;
+      } else if (this.roids[i].y > this.canvas.height + this.roids[i].r) {
+        this.roids[i].y = 0 - this.roids[i].r;
+      }
+    }
+  }
+
+  checkShipPosition = () => {
+    if (this.ship.x < 0 - this.ship.r) {
+      this.ship.x = this.canvas.width + this.ship.r;
+    } else if (this.ship.x > this.canvas.width + this.ship.r) {
+      this.ship.x = 0 - this.ship.r;
+    }
+    if (this.ship.y < 0 - this.ship.r) {
+      this.ship.y = this.canvas.height + this.ship.r;
+    } else if (this.ship.y > this.canvas.height + this.ship.r) {
+      this.ship.y = 0 - this.ship.r;
+    }
+  }
+
+  checkLasersPosition = () => {
+    for (let i = this.ship.lasers.length - 1; i >= 0; i--) {
+      if (this.ship.lasers[i].dist > this.LASER_DIST * this.canvas.width) {
+        this.ship.lasers.splice(i, 1);
+        continue;
+      }
+      if (this.ship.lasers[i].explodeTime > 0) {
+        this.ship.lasers[i].explodeTime--;
+        if (this.ship.lasers[i].explodeTime === 0) {
+          this.ship.lasers.splice(i, 1);
+          continue;
+        }
+      } else {
+        this.ship.lasers[i].x += this.ship.lasers[i].xv;
+        this.ship.lasers[i].y += this.ship.lasers[i].yv;
+        this.ship.lasers[i].dist += Math.sqrt(
+          Math.pow(this.ship.lasers[i].xv, 2) +
+          Math.pow(this.ship.lasers[i].yv, 2)
+        );
+      }
+      if (this.ship.lasers[i].x < 0) {
+        this.ship.lasers[i].x = this.canvas.width;
+      } else if (this.ship.lasers[i].x > this.canvas.width) {
+        this.ship.lasers[i].x = 0;
+      }
+      if (this.ship.lasers[i].y < 0) {
+        this.ship.lasers[i].y = this.canvas.height;
+      } else if (this.ship.lasers[i].y > this.canvas.height) {
+        this.ship.lasers[i].y = 0;
+      }
+    }
+  }
+
+  drawInfoText = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, " + this.textAlpha + ")";
+    ctx.font = "small-caps " + this.TEXT_SIZE + "px dejavu sans mono";
+    ctx.fillText(this.text, this.canvas.width / 2, this.canvas.height * 0.75);
+    this.textAlpha = this.textAlpha - 1.0 / this.TEXT_FADE_TIME / this.FPS;
+  }
+
+  thrustShip = () => {
+    this.ship.thrust.x +=
+      (this.SHIP_THRUST * Math.cos(this.ship.a)) / this.FPS;
+    this.ship.thrust.y -=
+      (this.SHIP_THRUST * Math.sin(this.ship.a)) / this.FPS;
+  }
+
+  drawThrusting = (exploding, blinkOn) => {
+    const ctx = this.canvas.getContext("2d");
+    if (!exploding && blinkOn) {
+      ctx.fillStyle = "red";
+      ctx.strokeStyle = "yellow";
+      ctx.lineWidth = this.SHIP_SIZE / 10;
+      ctx.beginPath();
+      ctx.moveTo(
+        this.ship.x -
+        this.ship.r *
+        ((2 / 3) * Math.cos(this.ship.a) + 0.5 * Math.sin(this.ship.a)),
+        this.ship.y +
+        this.ship.r *
+        ((2 / 3) * Math.sin(this.ship.a) - 0.5 * Math.cos(this.ship.a))
+      );
+      ctx.lineTo(
+        this.ship.x - ((this.ship.r * 5) / 3) * Math.cos(this.ship.a),
+        this.ship.y + ((this.ship.r * 5) / 3) * Math.sin(this.ship.a)
+      );
+      ctx.lineTo(
+        this.ship.x -
+        this.ship.r *
+        ((2 / 3) * Math.cos(this.ship.a) - 0.5 * Math.sin(this.ship.a)),
+        this.ship.y +
+        this.ship.r *
+        ((2 / 3) * Math.sin(this.ship.a) + 0.5 * Math.cos(this.ship.a))
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  drawAsteroids = () => {
+    const ctx = this.canvas.getContext("2d");
     let a, r, x, y, offs, vert;
     for (let i = 0; i < this.roids.length; i++) {
       ctx.strokeStyle = "slategrey";
@@ -167,122 +350,91 @@ class Asteroids extends React.Component {
         ctx.stroke();
       }
     }
-    if (this.ship.thrusting && !this.ship.dead) {
-      this.ship.thrust.x +=
-        (this.SHIP_THRUST * Math.cos(this.ship.a)) / this.FPS;
-      this.ship.thrust.y -=
-        (this.SHIP_THRUST * Math.sin(this.ship.a)) / this.FPS;
-      if (!exploding && blinkOn) {
-        ctx.fillStyle = "red";
-        ctx.strokeStyle = "yellow";
-        ctx.lineWidth = this.SHIP_SIZE / 10;
-        ctx.beginPath();
-        ctx.moveTo(
-          this.ship.x -
-          this.ship.r *
-          ((2 / 3) * Math.cos(this.ship.a) + 0.5 * Math.sin(this.ship.a)),
-          this.ship.y +
-          this.ship.r *
-          ((2 / 3) * Math.sin(this.ship.a) - 0.5 * Math.cos(this.ship.a))
-        );
-        ctx.lineTo(
-          this.ship.x - ((this.ship.r * 5) / 3) * Math.cos(this.ship.a),
-          this.ship.y + ((this.ship.r * 5) / 3) * Math.sin(this.ship.a)
-        );
-        ctx.lineTo(
-          this.ship.x -
-          this.ship.r *
-          ((2 / 3) * Math.cos(this.ship.a) - 0.5 * Math.sin(this.ship.a)),
-          this.ship.y +
-          this.ship.r *
-          ((2 / 3) * Math.sin(this.ship.a) + 0.5 * Math.cos(this.ship.a))
-        );
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-    } else {
-      this.ship.thrust.x -= (this.FRICTION * this.ship.thrust.x) / this.FPS;
-      this.ship.thrust.y -= (this.FRICTION * this.ship.thrust.y) / this.FPS;
+  }
+
+  drawScore = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "white";
+    ctx.font = this.TEXT_SIZE + "px dejavu sans mono";
+    ctx.fillText(
+      this.score,
+      this.canvas.width - this.SHIP_SIZE / 2,
+      this.SHIP_SIZE
+    );
+  }
+
+  drawLife = (exploding) => {
+    let lifeColour;
+    for (let i = 0; i < this.lives; i++) {
+      lifeColour = exploding && i === this.lives - 1 ? "red" : "white";
+      this.drawShip(
+        this.SHIP_SIZE + i * this.SHIP_SIZE * 1.2,
+        this.SHIP_SIZE,
+        0.5 * Math.PI,
+        lifeColour
+      );
     }
-    if (!exploding) {
-      if (blinkOn && !this.ship.dead) {
-        this.drawShip(this.ship.x, this.ship.y, this.ship.a);
-      }
-      if (this.ship.blinkNum > 0) {
-        this.ship.blinkTime--;
-        if (this.ship.blinkTime === 0) {
-          this.ship.blinkTime = Math.ceil(this.SHIP_BLINK_DUR * this.FPS);
-          this.ship.blinkNum--;
+  }
+
+  moveMenu = (direction) => {
+    switch (direction) {
+      case 0:
+        this.menu_option--;
+        if (this.menu_option < 1) {
+          this.menu_option = 1;
         }
-      }
-    } else {
-      ctx.fillStyle = "darkred";
-      ctx.beginPath();
-      ctx.arc(
-        this.ship.x,
-        this.ship.y,
-        this.ship.r * 1.7,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fill();
-      ctx.fillStyle = "red";
-      ctx.beginPath();
-      ctx.arc(
-        this.ship.x,
-        this.ship.y,
-        this.ship.r * 1.4,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fill();
-      ctx.fillStyle = "orange";
-      ctx.beginPath();
-      ctx.arc(
-        this.ship.x,
-        this.ship.y,
-        this.ship.r * 1.1,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fill();
-      ctx.fillStyle = "yellow";
-      ctx.beginPath();
-      ctx.arc(
-        this.ship.x,
-        this.ship.y,
-        this.ship.r * 0.8,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fill();
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(
-        this.ship.x,
-        this.ship.y,
-        this.ship.r * 0.5,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fill();
+        break;
+      case 1:
+        this.menu_option++;
+        if (this.menu_option > this.menu.length - 1) {
+          this.menu_option = this.menu.length - 1;
+        }
+        break;
+      default: break;
     }
-    if (this.SHOW_BOUNDING) {
-      ctx.strokeStyle = "lime";
-      ctx.beginPath();
-      ctx.arc(this.ship.x, this.ship.y, this.ship.r, 0, Math.PI * 2, false);
-      ctx.stroke();
+  }
+
+  drawMenu = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "white";
+    ctx.font = this.TEXT_SIZE * 0.75 + "px dejavu sans mono";
+    for (let i = 0; i < this.menu.length; i++) {
+      const value = this.menu[i]
+      const menu_position = this.canvas.height / 2 - (this.TEXT_SIZE * 0.75 / 2 * this.menu.length);
+      const section_position = i * (this.TEXT_SIZE * 0.75 / 2 * this.menu.length)
+      const selected = i === this.menu_option;
+      ctx.fillText(
+        (selected ? "> " + value : value).toUpperCase(),
+        this.canvas.width / 2,
+        menu_position + section_position
+      );
     }
-    if (this.SHOW_CENTRE_DOT) {
-      ctx.fillStyle = "red";
-      ctx.fillRect(this.ship.x - 1, this.ship.y - 1, 2, 2);
-    }
+  }
+
+  drawHighestScore = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "white";
+    ctx.font = this.TEXT_SIZE * 0.75 + "px dejavu sans mono";
+    ctx.fillText(
+      "BEST " + this.scoreHigh,
+      this.canvas.width / 2,
+      this.SHIP_SIZE
+    );
+  }
+
+  brakeShip = () => {
+    this.ship.thrust.x -= (this.FRICTION * this.ship.thrust.x) / this.FPS;
+    this.ship.thrust.y -= (this.FRICTION * this.ship.thrust.y) / this.FPS;
+  }
+
+  drawLasers = () => {
+    const ctx = this.canvas.getContext("2d");
     for (let i = 0; i < this.ship.lasers.length; i++) {
       if (this.ship.lasers[i].explodeTime === 0) {
         ctx.fillStyle = "salmon";
@@ -332,149 +484,132 @@ class Asteroids extends React.Component {
         ctx.fill();
       }
     }
-    if (this.textAlpha >= 0) {
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(255, 255, 255, " + this.textAlpha + ")";
-      ctx.font = "small-caps " + this.TEXT_SIZE + "px dejavu sans mono";
-      ctx.fillText(this.text, this.canvas.width / 2, this.canvas.height * 0.75);
-      this.textAlpha = this.textAlpha - 1.0 / this.TEXT_FADE_TIME / this.FPS;
-    } else if (this.ship.dead) {
-      this.newGame();
-    }
-    let lifeColour;
-    for (let i = 0; i < this.lives; i++) {
-      lifeColour = exploding && i === this.lives - 1 ? "red" : "white";
-      this.drawShip(
-        this.SHIP_SIZE + i * this.SHIP_SIZE * 1.2,
-        this.SHIP_SIZE,
-        0.5 * Math.PI,
-        lifeColour
-      );
-    }
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "white";
-    ctx.font = this.TEXT_SIZE + "px dejavu sans mono";
-    ctx.fillText(
-      this.score,
-      this.canvas.width - this.SHIP_SIZE / 2,
-      this.SHIP_SIZE
+  }
+
+  drawExplosion = () => {
+    const ctx = this.canvas.getContext("2d");
+    ctx.fillStyle = "darkred";
+    ctx.beginPath();
+    ctx.arc(
+      this.ship.x,
+      this.ship.y,
+      this.ship.r * 1.7,
+      0,
+      Math.PI * 2,
+      false
     );
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "white";
-    ctx.font = this.TEXT_SIZE * 0.75 + "px dejavu sans mono";
-    ctx.fillText(
-      "BEST " + this.scoreHigh,
-      this.canvas.width / 2,
-      this.SHIP_SIZE
+    ctx.fill();
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(
+      this.ship.x,
+      this.ship.y,
+      this.ship.r * 1.4,
+      0,
+      Math.PI * 2,
+      false
     );
-    let ax, ay, ar, lx, ly;
-    for (let i = this.roids.length - 1; i >= 0; i--) {
-      ax = this.roids[i].x;
-      ay = this.roids[i].y;
-      ar = this.roids[i].r;
-      for (let j = this.ship.lasers.length - 1; j >= 0; j--) {
-        lx = this.ship.lasers[j].x;
-        ly = this.ship.lasers[j].y;
-        if (
-          this.ship.lasers[j].explodeTime === 0 &&
-          this.distBetweenPoints(ax, ay, lx, ly) < ar
-        ) {
-          this.destroyAsteroid(i);
-          this.ship.lasers[j].explodeTime = Math.ceil(
-            this.LASER_EXPLODE_DUR * this.FPS
-          );
-          break;
-        }
+    ctx.fill();
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.arc(
+      this.ship.x,
+      this.ship.y,
+      this.ship.r * 1.1,
+      0,
+      Math.PI * 2,
+      false
+    );
+    ctx.fill();
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(
+      this.ship.x,
+      this.ship.y,
+      this.ship.r * 0.8,
+      0,
+      Math.PI * 2,
+      false
+    );
+    ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(
+      this.ship.x,
+      this.ship.y,
+      this.ship.r * 0.5,
+      0,
+      Math.PI * 2,
+      false
+    );
+    ctx.fill();
+  }
+
+  update = () => {
+    const ctx = this.canvas.getContext("2d");
+    const blinkOn = this.ship.blinkNum % 2 === 0;
+    const exploding = this.ship.explodeTime > 0;
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.paused) {
+      this.drawAsteroids();
+      this.drawShip(this.ship.x, this.ship.y, this.ship.a);
+      if (this.SHOW_BOUNDING) {
+        this.drawBounding();
       }
-    }
-    if (!exploding) {
-      if (this.ship.blinkNum === 0 && !this.ship.dead) {
-        for (var i = 0; i < this.roids.length; i++) {
-          if (
-            this.distBetweenPoints(
-              this.ship.x,
-              this.ship.y,
-              this.roids[i].x,
-              this.roids[i].y
-            ) <
-            this.ship.r + this.roids[i].r
-          ) {
-            this.explodeShip();
-            this.destroyAsteroid(i);
-            break;
+      if (this.SHOW_CENTRE_DOT) {
+        this.drawCenterDot();
+      }
+      this.drawLife(exploding);
+      this.drawScore();
+      this.drawHighestScore();
+      this.drawMenu();
+    } else {
+      this.drawAsteroids();
+      if (this.ship.thrusting && !this.ship.dead) {
+        this.thrustShip();
+        this.drawThrusting(exploding, blinkOn);
+      } else {
+        this.brakeShip();
+      }
+      if (exploding) {
+        this.drawExplosion();
+      } else {
+        if (blinkOn && !this.ship.dead) {
+          this.drawShip(this.ship.x, this.ship.y, this.ship.a);
+        }
+        if (this.ship.blinkNum > 0) {
+          this.ship.blinkTime--;
+          if (this.ship.blinkTime === 0) {
+            this.ship.blinkTime = Math.ceil(this.SHIP_BLINK_DUR * this.FPS);
+            this.ship.blinkNum--;
           }
         }
       }
-      this.ship.a += this.ship.rot;
-      this.ship.x += this.ship.thrust.x;
-      this.ship.y += this.ship.thrust.y;
-    } else {
-      this.ship.explodeTime--;
-      if (this.ship.explodeTime === 0) {
-        this.lives = this.lives - 1;
-        if (this.lives === 0) {
-          this.gameOver();
-        } else {
-          this.ship = this.newShip();
-        }
+      if (this.SHOW_BOUNDING) {
+        this.drawBounding();
       }
-    }
-    if (this.ship.x < 0 - this.ship.r) {
-      this.ship.x = this.canvas.width + this.ship.r;
-    } else if (this.ship.x > this.canvas.width + this.ship.r) {
-      this.ship.x = 0 - this.ship.r;
-    }
-    if (this.ship.y < 0 - this.ship.r) {
-      this.ship.y = this.canvas.height + this.ship.r;
-    } else if (this.ship.y > this.canvas.height + this.ship.r) {
-      this.ship.y = 0 - this.ship.r;
-    }
-    for (let i = this.ship.lasers.length - 1; i >= 0; i--) {
-      if (this.ship.lasers[i].dist > this.LASER_DIST * this.canvas.width) {
-        this.ship.lasers.splice(i, 1);
-        continue;
+      if (this.SHOW_CENTRE_DOT) {
+        this.drawCenterDot();
       }
-      if (this.ship.lasers[i].explodeTime > 0) {
-        this.ship.lasers[i].explodeTime--;
-        if (this.ship.lasers[i].explodeTime === 0) {
-          this.ship.lasers.splice(i, 1);
-          continue;
-        }
+      this.drawLasers();
+      if (this.textAlpha >= 0) {
+        this.drawInfoText();
+      } else if (this.ship.dead) {
+        this.newGame();
+      }
+      this.drawLife(exploding);
+      this.drawScore();
+      this.drawHighestScore();
+      this.checkLaserCollision();
+      if (exploding) {
+        this.explodingShip();
       } else {
-        this.ship.lasers[i].x += this.ship.lasers[i].xv;
-        this.ship.lasers[i].y += this.ship.lasers[i].yv;
-        this.ship.lasers[i].dist += Math.sqrt(
-          Math.pow(this.ship.lasers[i].xv, 2) +
-          Math.pow(this.ship.lasers[i].yv, 2)
-        );
+        this.checkShipCollision()
       }
-      if (this.ship.lasers[i].x < 0) {
-        this.ship.lasers[i].x = this.canvas.width;
-      } else if (this.ship.lasers[i].x > this.canvas.width) {
-        this.ship.lasers[i].x = 0;
-      }
-      if (this.ship.lasers[i].y < 0) {
-        this.ship.lasers[i].y = this.canvas.height;
-      } else if (this.ship.lasers[i].y > this.canvas.height) {
-        this.ship.lasers[i].y = 0;
-      }
-    }
-    for (let i = 0; i < this.roids.length; i++) {
-      this.roids[i].x += this.roids[i].xv;
-      this.roids[i].y += this.roids[i].yv;
-      if (this.roids[i].x < 0 - this.roids[i].r) {
-        this.roids[i].x = this.canvas.width + this.roids[i].r;
-      } else if (this.roids[i].x > this.canvas.width + this.roids[i].r) {
-        this.roids[i].x = 0 - this.roids[i].r;
-      }
-      if (this.roids[i].y < 0 - this.roids[i].r) {
-        this.roids[i].y = this.canvas.height + this.roids[i].r;
-      } else if (this.roids[i].y > this.canvas.height + this.roids[i].r) {
-        this.roids[i].y = 0 - this.roids[i].r;
-      }
+      this.checkShipPosition();
+      this.checkLasersPosition();
+      this.checkAsteroidsPosition();
     }
   };
 
@@ -491,17 +626,37 @@ class Asteroids extends React.Component {
 
   pauseGame = () => {
     this.paused = true;
-    clearInterval(this.interval);
   };
 
   continueGame = () => {
     this.paused = false;
-    this.interval = setInterval(this.update, 1000 / this.FPS);
   };
+
+  applyMenuAction = () => {
+    for (let i = 0; i < this.menu.length; i++) {
+      const id = this.menu[i];
+      if (i === this.menu_option) {
+        this.props.onEvent({
+          id
+        });
+      }
+    }
+  }
 
   keyDown = (ev) => {
     if (!this.ship.dead) {
       switch (ev.keyCode) {
+        case 13:
+          if (this.paused) {
+            this.applyMenuAction();
+          }
+          break;
+        case 83:
+        case 40:
+          if (this.paused) {
+            this.moveMenu(1);
+          }
+          break;
         case 27:
           if (this.paused) {
             this.continueGame();
@@ -519,7 +674,11 @@ class Asteroids extends React.Component {
           break;
         case 87:
         case 38:
-          this.ship.thrusting = true;
+          if (this.paused) {
+            this.moveMenu(0);
+          } else {
+            this.ship.thrusting = true;
+          }
           break;
         case 68:
         case 39:

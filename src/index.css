@@ -1,5 +1,4 @@
 body {
-  background-color: rgba(0, 0, 255, 1);
   min-height: 100%;
   min-width: 100%;
   width: auto;
@@ -13,7 +12,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 html {
-  background-color: rgba(255, 0, 0, 1);
   height: 100%;
   width: 100%;
   padding: 0;

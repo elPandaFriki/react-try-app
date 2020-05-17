@@ -37,6 +37,7 @@
     ]
   },
   "dependencies": {
+    "@blueprintjs/core": "^3.26.1",
     "@material-ui/core": "4.8.0",
     "@material-ui/icons": "4.5.1",
     "@material-ui/styles": "4.7.1",
@@ -62,7 +63,8 @@
     "redux-thunk": "2.3.0",
     "socket.io-client": "2.3.0",
     "socket.io-react": "1.2.0",
-    "source-map-explorer": "2.2.1"
+    "source-map-explorer": "2.2.1",
+    "styled-components": "^5.1.0"
   },
   "devDependencies": {
     "electron": "^8.3.0",
