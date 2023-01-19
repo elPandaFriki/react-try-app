@@ -67,7 +67,7 @@
     "styled-components": "^5.1.0"
   },
   "devDependencies": {
-    "electron": "^8.3.0",
+    "electron": "^18.3.7",
     "electron-packager": "^14.2.1",
     "foreman": "^3.0.1"
   }
